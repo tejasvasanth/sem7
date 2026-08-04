@@ -1,0 +1,42 @@
+{
+  "name": "airlock-desktop-agent",
+  "version": "0.1.0",
+  "description": "AirLock Desktop Agent — proximity-aware auto-lock security system (Person 1)",
+  "main": "dist/main.js",
+  "author": "AirLock — Desktop Systems Engineer",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && npm run copy:assets",
+    "copy:assets": "node scripts/copy-assets.js",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron . --dev",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-rebuild -f -w better-sqlite3 || echo \"electron-rebuild skipped\"",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "express": "^4.21.2",
+    "mqtt": "^5.10.3",
+    "node-global-key-listener": "^0.3.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.5",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.3"
+  },
+  "build": {
+    "appId": "com.airlock.desktopagent",
+    "productName": "AirLock Desktop Agent",
+    "files": [
+      "dist/**/*",
+      "mocks/**/*",
+      "node_modules/**/*"
+    ]
+  }
+}
