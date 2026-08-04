@@ -4,6 +4,7 @@
     "module": "CommonJS",
     "moduleResolution": "Node",
     "lib": ["ES2021", "DOM"],
+    "jsx": "react-jsx",
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
@@ -14,6 +15,6 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/ui/renderer/**/*.js"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "dist", "src/ui/renderer/renderer.js"]
 }

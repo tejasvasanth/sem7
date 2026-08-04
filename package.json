@@ -6,7 +6,8 @@
   "author": "AirLock — Desktop Systems Engineer",
   "license": "MIT",
   "scripts": {
-    "build": "tsc -p tsconfig.json && npm run copy:assets",
+    "build": "tsc -p tsconfig.json && vite build",
+    "build:renderer": "vite build",
     "copy:assets": "node scripts/copy-assets.js",
     "start": "npm run build && electron .",
     "dev": "npm run build && electron . --dev",
@@ -15,10 +16,14 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
+    "@ant-design/icons": "^6.3.2",
+    "antd": "^6.5.3",
     "better-sqlite3": "^11.8.1",
     "express": "^4.21.2",
     "mqtt": "^5.10.3",
     "node-global-key-listener": "^0.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "winston": "^3.17.0"
   },
   "devDependencies": {
@@ -26,9 +31,13 @@
     "@types/better-sqlite3": "^7.6.12",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.5",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
     "electron": "^33.3.1",
     "electron-builder": "^25.1.8",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vite": "^8.2.0"
   },
   "build": {
     "appId": "com.airlock.desktopagent",
