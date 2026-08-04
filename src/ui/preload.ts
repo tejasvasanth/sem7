@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
 
+function subscribe(channel: string, callback: (data: unknown) => void): () => void {
+  const listener = (_event: Electron.IpcRendererEvent, data: unknown) =>
+    callback(data);
+  ipcRenderer.on(channel, listener);
+  return () => ipcRenderer.removeListener(channel, listener);
+}
+
 // Safe, minimal bridge between the renderer and main process.
 contextBridge.exposeInMainWorld("airlock", {
   getContext: () => ipcRenderer.invoke("get-context"),
@@ -12,10 +19,8 @@ contextBridge.exposeInMainWorld("airlock", {
   manualLock: () => ipcRenderer.invoke("manual-lock"),
   manualUnlock: () => ipcRenderer.invoke("manual-unlock"),
 
-  onContext: (cb: (data: unknown) => void) =>
-    ipcRenderer.on("context", (_e, d) => cb(d)),
+  onContext: (cb: (data: unknown) => void) => subscribe("context", cb),
   onRobotStatus: (cb: (data: unknown) => void) =>
-    ipcRenderer.on("robotStatus", (_e, d) => cb(d)),
-  onLockEvent: (cb: (data: unknown) => void) =>
-    ipcRenderer.on("lockEvent", (_e, d) => cb(d)),
+    subscribe("robotStatus", cb),
+  onLockEvent: (cb: (data: unknown) => void) => subscribe("lockEvent", cb),
 });

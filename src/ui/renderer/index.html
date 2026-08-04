@@ -1,154 +1,16 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; script-src 'self';"
     />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AirLock Desktop Agent</title>
-    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <aside class="sidebar">
-      <div class="brand">
-        <span class="logo">🔒</span>
-        <div>
-          <h1>AirLock</h1>
-          <p>Desktop Agent</p>
-        </div>
-      </div>
-      <nav>
-        <button class="nav-item active" data-tab="dashboard">Dashboard</button>
-        <button class="nav-item" data-tab="logs">Logs</button>
-        <button class="nav-item" data-tab="settings">Settings</button>
-      </nav>
-      <div class="status-pills">
-        <div class="pill" id="mqttPill">MQTT: <span>…</span></div>
-        <div class="pill" id="aiPill">AI: <span>…</span></div>
-      </div>
-    </aside>
-
-    <main class="content">
-      <!-- Dashboard -->
-      <section class="tab active" id="tab-dashboard">
-        <header class="tab-head">
-          <h2>Dashboard</h2>
-          <div class="actions">
-            <button id="btnLock" class="btn btn-danger">Lock Now</button>
-            <button id="btnUnlock" class="btn">Reset / Unlock</button>
-          </div>
-        </header>
-
-        <div class="decision-card" id="decisionCard">
-          <div class="decision-badge" id="decisionBadge">WAIT</div>
-          <div class="decision-meta">
-            <div class="reason" id="decisionReason">Waiting for first sample…</div>
-            <div class="confidence-wrap">
-              <div class="confidence-label">
-                Confidence: <span id="confidenceValue">–</span>
-              </div>
-              <div class="confidence-bar">
-                <div class="confidence-fill" id="confidenceFill"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid">
-          <div class="metric"><span>Idle time</span><b id="mIdle">–</b></div>
-          <div class="metric"><span>Keyboard</span><b id="mKeyboard">–</b></div>
-          <div class="metric"><span>Mouse</span><b id="mMouse">–</b></div>
-          <div class="metric"><span>Wi-Fi SSID</span><b id="mSSID">–</b></div>
-          <div class="metric"><span>RSSI (dBm)</span><b id="mRssi">–</b></div>
-          <div class="metric"><span>Phone moving</span><b id="mMoving">–</b></div>
-          <div class="metric"><span>Battery</span><b id="mBattery">–</b></div>
-          <div class="metric"><span>Charging</span><b id="mCharging">–</b></div>
-        </div>
-
-        <div class="robot-card">
-          <h3>Robot Status</h3>
-          <div class="grid">
-            <div class="metric"><span>State</span><b id="rState">–</b></div>
-            <div class="metric"><span>Battery</span><b id="rBattery">–</b></div>
-            <div class="metric"><span>Distance</span><b id="rDistance">–</b></div>
-            <div class="metric"><span>Intruder</span><b id="rIntruder">–</b></div>
-          </div>
-          <div class="intruder-alert hidden" id="intruderAlert">
-            ⚠ Intruder detected near the workstation!
-          </div>
-        </div>
-      </section>
-
-      <!-- Logs -->
-      <section class="tab" id="tab-logs">
-        <header class="tab-head">
-          <h2>Sensor Logs</h2>
-          <div class="actions">
-            <input type="date" id="filterDate" />
-            <select id="filterDecision">
-              <option value="">All decisions</option>
-              <option value="LOCK">LOCK</option>
-              <option value="UNLOCK">UNLOCK</option>
-              <option value="WAIT">WAIT</option>
-            </select>
-            <button id="btnRefreshLogs" class="btn">Refresh</button>
-          </div>
-        </header>
-        <div class="table-wrap">
-          <table id="logsTable">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Idle</th>
-                <th>KB</th>
-                <th>Mouse</th>
-                <th>SSID</th>
-                <th>RSSI</th>
-                <th>Moving</th>
-                <th>Batt</th>
-                <th>Decision</th>
-                <th>Conf</th>
-                <th>Reason</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Settings -->
-      <section class="tab" id="tab-settings">
-        <header class="tab-head"><h2>Settings</h2></header>
-        <div class="settings-form">
-          <label>
-            Sensitivity: <span id="sensVal">3</span>
-            <input type="range" id="sensitivity" min="1" max="5" step="1" />
-            <small>Higher = locks sooner (tighter idle & RSSI thresholds)</small>
-          </label>
-          <label>
-            Idle threshold (seconds)
-            <input type="number" id="idleThreshold" min="5" max="600" />
-          </label>
-          <label>
-            RSSI threshold (dBm)
-            <input type="number" id="rssiThreshold" min="-95" max="-40" />
-          </label>
-          <label class="toggle">
-            <input type="checkbox" id="useAiEngine" />
-            Use AI Engine (fallback to local rules if off/unreachable)
-          </label>
-          <label>
-            MQTT broker address
-            <input type="text" id="mqttBrokerUrl" placeholder="mqtt://localhost:1883" />
-          </label>
-          <button id="btnSaveSettings" class="btn btn-primary">Save Settings</button>
-          <div class="save-status" id="saveStatus"></div>
-        </div>
-      </section>
-    </main>
-
-    <div class="toast" id="toast"></div>
-    <script src="renderer.js"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
