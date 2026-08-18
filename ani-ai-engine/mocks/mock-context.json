@@ -1,0 +1,11 @@
+{
+  "timestamp": 1721049301,
+  "idleTime": 42,
+  "keyboardActive": false,
+  "mouseActive": false,
+  "wifiSSID": "Home",
+  "rssi": -72,
+  "phoneMoving": true,
+  "battery": 68,
+  "charging": false
+}
