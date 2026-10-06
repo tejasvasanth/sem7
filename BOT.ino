@@ -19,8 +19,8 @@ const char* WIFI_PASS = "123456789";
 const char* BOT_TOKEN = "8832083833:AAGg-Byz8wuu_bd-KUK8shvUbL2uN5FID20";
 const char* CHAT_ID   = "6130283037";
 
-// MQTT Broker Configuration (Set to your laptop's LAN IP, e.g., 192.168.1.X)
-const char* MQTT_BROKER = "192.168.1.100"; // <-- Set this to your laptop IP
+// MQTT Broker Configuration (Your laptop's current Wi-Fi IP address)
+const char* MQTT_BROKER = "192.168.0.105";
 const int   MQTT_PORT   = 1883;
 
 // AirLock Contract Topics (from AIRLOCK_GOD_FILE.md)
