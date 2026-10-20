@@ -30,8 +30,8 @@ export const LOG_DIR = path.join(APP_ROOT, "logs");
 
 // Defaults seeded into the settings table on first run.
 export const DEFAULT_SETTINGS: AgentSettings = {
-  sensitivityLevel: 3,
-  idleThreshold: 60,
+  sensitivityLevel: 5,
+  idleThreshold: 3,
   rssiThreshold: -75,
   useAiEngine: true,
   mqttBrokerUrl: MQTT_BROKER_URL,

@@ -28,7 +28,7 @@ class RuleEngine:
         keyboard_active = ctx["keyboardActive"]
         mouse_active = ctx["mouseActive"]
 
-        if idle_time > 60 and rssi < -75:
+        if idle_time > 3 and rssi < -75:
             return RuleResult(
                 decision="LOCK",
                 confidence=95,

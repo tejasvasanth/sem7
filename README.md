@@ -32,16 +32,24 @@ local REST API for the AI Engine.
 
 ## Install & Run
 
+### 1. Run Complete AirLock System (Bridge + Phone Proximity)
+To run the full proximity auto-lock bridge with your phone and ESP32 bot:
+```powershell
+cd C:\Users\akaas\Downloads\BOT
+python ble_airlock_bridge.py
+```
+
+### 2. Run Desktop Agent (Electron Dashboard)
 ```bash
-cd desktop-agent
+cd C:\Users\akaas\Downloads\BOT\sem7
 npm install        # builds native modules against Electron via postinstall
 npm start          # compile TypeScript + launch Electron
 ```
 
-For development with DevTools:
-
-```bash
-npm run dev
+### 3. Run AI Engine (FastAPI)
+```powershell
+cd C:\Users\akaas\Downloads\BOT\sem7\ani-ai-engine
+uvicorn main:app --reload --port 8000
 ```
 
 ## Configuration

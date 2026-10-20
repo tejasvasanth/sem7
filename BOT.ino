@@ -1,6 +1,8 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <WebServer.h>
+#include <ESPmDNS.h>
 #include <ArduinoJson.h>
 
 #define TRIG_PIN 14
@@ -15,9 +17,10 @@ const char* BOT_TOKEN = "8832083833:AAGg-Byz8wuu_bd-KUK8shvUbL2uN5FID20";
 const char* CHAT_ID   = "6130283037";
 
 WiFiClientSecure secureClient;
+WebServer server(80);
 long lastUpdateId = 0;
 
-// States: DORMANT (sleeping until laptop locks), SCANNING (guarding), AWAITING_REPLY, ALARM
+// States: DORMANT (sleeping until laptop locks), SCANNING (guarding desk), AWAITING_REPLY, ALARM
 enum State { DORMANT, SCANNING, AWAITING_REPLY, ALARM };
 State state = DORMANT;
 
@@ -60,9 +63,9 @@ String checkTelegramMessage() {
         String msgText = update["message"]["text"].as<String>();
         String fromChatId = update["message"]["chat"]["id"].as<String>();
         if (fromChatId == String(CHAT_ID)) {
-          msgText.toLowerCase();
           text = msgText;
-          Serial.print("[TELEGRAM] Message received: ");
+          text.toLowerCase();
+          Serial.print("[TELEGRAM] User message: ");
           Serial.println(text);
         }
       }
@@ -87,7 +90,7 @@ void clearOldUpdates() {
   http.end();
 }
 
-// ======================== SENSOR FUNCTION ========================
+// ======================== HARDWARE SENSOR ========================
 int getDistanceCm() {
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
@@ -95,10 +98,34 @@ int getDistanceCm() {
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
   long duration = pulseIn(ECHO_PIN, HIGH, 30000);
+  if (duration == 0) return 999;
   return duration * 0.0343 / 2;
 }
 
-// ======================== SETUP ========================
+// ======================== LOCAL HTTP API ========================
+void handleStartScanning() {
+  state = SCANNING;
+  server.send(200, "text/plain", "SCANNING_ACTIVE");
+  Serial.println("\n[HTTP COMMAND] Woken up by laptop lock -> SCANNING mode!");
+  sendTelegramMessage("🛡️ AirLock Bot ACTIVE: Laptop locked. Guarding desk!");
+}
+
+void handleStandDown() {
+  state = DORMANT;
+  digitalWrite(LED_PIN, LOW);
+  server.send(200, "text/plain", "DORMANT_ACTIVE");
+  Serial.println("\n[HTTP COMMAND] Stood down by laptop -> DORMANT mode.");
+  sendTelegramMessage("💤 AirLock Bot: Laptop safe. Returning to DORMANT mode.");
+}
+
+void handleStatus() {
+  String s = (state == DORMANT) ? "DORMANT" :
+             (state == SCANNING) ? "SCANNING" :
+             (state == AWAITING_REPLY) ? "AWAITING_REPLY" : "ALARM";
+  server.send(200, "text/plain", s);
+}
+
+// ======================== SETUP & LOOP ========================
 void setup() {
   Serial.begin(115200);
   pinMode(TRIG_PIN, OUTPUT);
@@ -116,96 +143,119 @@ void setup() {
   }
   Serial.println(" connected!");
 
+  IPAddress myIP = WiFi.localIP();
+  Serial.print("[WIFI] IP Address: ");
+  Serial.println(myIP);
+
+  // Setup mDNS name http://airlock-bot.local
+  if (MDNS.begin("airlock-bot")) {
+    Serial.println("[MDNS] Responder started: http://airlock-bot.local");
+  }
+
+  // Setup local HTTP server endpoints
+  server.on("/start", HTTP_GET, handleStartScanning);
+  server.on("/start_scanning", HTTP_GET, handleStartScanning);
+  server.on("/stop", HTTP_GET, handleStandDown);
+  server.on("/stand_down", HTTP_GET, handleStandDown);
+  server.on("/status", HTTP_GET, handleStatus);
+  server.begin();
+  Serial.println("[HTTP SERVER] Ready on port 80");
+
   secureClient.setInsecure();
   clearOldUpdates();
 
-  Serial.println("[AIRLOCK] Bot Ready. State: DORMANT (Waiting for laptop lock signal)");
-  sendTelegramMessage("🤖 AirLock Bot Online. State: DORMANT (Waiting for laptop lock).");
+  Serial.println("[AIRLOCK BOT] Initialized in DORMANT state.");
+  sendTelegramMessage("🤖 AirLock Bot Online (IP: " + myIP.toString() + "). Sleeping until laptop locks.");
 }
 
-// ======================== MAIN LOOP ========================
 void loop() {
-  // 1. DORMANT STATE: Bot is completely quiet while you are at your laptop
+  server.handleClient();
+  unsigned long now = millis();
+
+  // 1. DORMANT: Waiting for laptop to lock (via HTTP from bridge or Telegram 'start')
   if (state == DORMANT) {
     digitalWrite(LED_PIN, LOW);
-    if (millis() - lastPollTime > POLL_INTERVAL) {
-      lastPollTime = millis();
-      String cmd = checkTelegramMessage();
-      if (cmd.indexOf("start") >= 0 || cmd.indexOf("guard") >= 0) {
+    if (now - lastPollTime > POLL_INTERVAL) {
+      lastPollTime = now;
+      String msg = checkTelegramMessage();
+      if (msg.indexOf("start") >= 0 || msg.indexOf("scan") >= 0) {
         state = SCANNING;
-        Serial.println("[AIRLOCK] Woken up -> SCANNING / GUARD MODE");
-        sendTelegramMessage("🛡️ AirLock: Laptop locked. Guard mode ACTIVE. Scanning for intruders...");
+        Serial.println("[TELEGRAM] Received start -> SCANNING mode.");
+        sendTelegramMessage("🛡️ AirLock Bot ACTIVE: Guarding desk.");
       }
     }
   }
 
-  // 2. SCANNING STATE: Laptop is locked -> Bot actively monitors ultrasonic sensor
+  // 2. SCANNING: Laptop is locked -> Bot actively scans with ultrasonic sensor
   else if (state == SCANNING) {
     digitalWrite(LED_PIN, LOW);
-    int distanceCm = getDistanceCm();
-    Serial.print("Guard Mode | Distance: ");
-    Serial.print(distanceCm);
+    int distance = getDistanceCm();
+    Serial.print("Guarding... Distance: ");
+    Serial.print(distance);
     Serial.println(" cm");
 
-    // Check for intruder within 50 cm
-    if (distanceCm > 0 && distanceCm < 50) {
-      Serial.println("[ALERT] Proximity triggered (< 50cm)!");
-      sendTelegramMessage("⚠️ AirLock: Someone is near the bot. Reply YES if it's you, NO if not.");
-      awaitStartTime = millis();
-      lastPollTime = millis();
-      state = AWAITING_REPLY;
+    // Check if user replied via Telegram
+    if (now - lastPollTime > POLL_INTERVAL) {
+      lastPollTime = now;
+      String msg = checkTelegramMessage();
+      if (msg.indexOf("stand_down") >= 0 || msg.indexOf("stop") >= 0) {
+        state = DORMANT;
+        Serial.println("[STATE] Telegram stand down -> DORMANT mode.");
+        sendTelegramMessage("💤 AirLock Bot: Returning to DORMANT mode.");
+        return;
+      }
     }
 
-    // Also check if user unlocked laptop and told bot to stand down
-    if (millis() - lastPollTime > POLL_INTERVAL) {
-      lastPollTime = millis();
-      String cmd = checkTelegramMessage();
-      if (cmd.indexOf("stop") >= 0 || cmd.indexOf("stand") >= 0 || cmd.indexOf("unlock") >= 0) {
-        state = DORMANT;
-        Serial.println("[AIRLOCK] Stood down -> DORMANT");
-        sendTelegramMessage("💤 AirLock: Laptop unlocked. Bot is now DORMANT.");
-      }
+    // Intruder detected within 50 cm
+    if (distance > 0 && distance < 50) {
+      Serial.println("\n[ALERT] Movement detected at desk! Asking user...");
+      sendTelegramMessage("🚨 Desk Alert: Movement detected near your desk! Is this you? Reply YES or NO.");
+      awaitStartTime = now;
+      lastPollTime = now;
+      state = AWAITING_REPLY;
     }
   }
 
-  // 3. AWAITING REPLY STATE: Intruder seen, waiting for YES/NO
+  // 3. AWAITING_REPLY: Waiting for user to confirm on Telegram/Phone App
   else if (state == AWAITING_REPLY) {
-    if (millis() - lastPollTime > POLL_INTERVAL) {
-      lastPollTime = millis();
+    // Flash LED while awaiting verification
+    digitalWrite(LED_PIN, (now / 300) % 2 == 0 ? HIGH : LOW);
+
+    if (now - lastPollTime > POLL_INTERVAL) {
+      lastPollTime = now;
       String reply = checkTelegramMessage();
-      if (reply.indexOf("yes") >= 0) {
-        Serial.println("[TELEGRAM] Owner verified -> returning to SCANNING");
-        sendTelegramMessage("✅ AirLock: Owner verified. Resuming guard scan.");
-        state = SCANNING;
+
+      if (reply.indexOf("yes") >= 0 || reply.indexOf("stand") >= 0) {
+        Serial.println("[VERIFIED] User replied YES. False alarm.");
+        sendTelegramMessage("✅ Verified! Resuming DORMANT mode.");
+        state = DORMANT;
       } else if (reply.indexOf("no") >= 0) {
-        Serial.println("[TELEGRAM] Intruder confirmed -> ALARM!");
-        sendTelegramMessage("🚨 AirLock: INTRUDER ALERT! Alarm triggered!");
+        Serial.println("[INTRUDER] User replied NO! Sounding ALARM!");
+        sendTelegramMessage("🚨 INTRUDER CONFIRMED! SOUNDING ALARM!");
         state = ALARM;
       }
     }
 
-    // 30s timeout without reply -> alarm
-    if (millis() - awaitStartTime > REPLY_TIMEOUT && state == AWAITING_REPLY) {
-      Serial.println("[TIMEOUT] No reply in 30s -> ALARM!");
-      sendTelegramMessage("🚨 AirLock: No reply in 30 seconds! Alarm triggered!");
+    if (now - awaitStartTime > REPLY_TIMEOUT && state == AWAITING_REPLY) {
+      Serial.println("[TIMEOUT] No response in 30s! Sounding ALARM!");
+      sendTelegramMessage("⚠️ No reply received in 30s. Triggering ALARM!");
       state = ALARM;
     }
   }
 
-  // 4. ALARM STATE: LED stays on until reset
+  // 4. ALARM: Buzzer/LED stays HIGH until stand_down or reset command
   else if (state == ALARM) {
     digitalWrite(LED_PIN, HIGH);
-    if (millis() - lastPollTime > POLL_INTERVAL) {
-      lastPollTime = millis();
-      String cmd = checkTelegramMessage();
-      if (cmd.indexOf("reset") >= 0 || cmd.indexOf("stop") >= 0 || cmd.indexOf("stand") >= 0) {
-        digitalWrite(LED_PIN, LOW);
+    if (now - lastPollTime > POLL_INTERVAL) {
+      lastPollTime = now;
+      String reply = checkTelegramMessage();
+      if (reply.indexOf("stand_down") >= 0 || reply.indexOf("stop") >= 0 || reply.indexOf("yes") >= 0 || reply.indexOf("reset") >= 0) {
+        Serial.println("[RESET] Alarm cleared.");
+        sendTelegramMessage("🛡️ Alarm cleared. Returning to DORMANT mode.");
         state = DORMANT;
-        Serial.println("[AIRLOCK] Alarm reset -> DORMANT");
-        sendTelegramMessage("✅ AirLock: Alarm reset. Bot is now DORMANT.");
       }
     }
   }
 
-  delay(200);
+  delay(150);
 }

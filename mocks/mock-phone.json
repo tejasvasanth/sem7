@@ -1,7 +1,6 @@
 {
-  "rssi": -68,
+  "rssi": -70,
   "phoneMoving": false,
-  "battery": 74,
-  "charging": false,
-  "accelerometer": { "x": 0.1, "y": 0.2, "z": 9.8 }
+  "battery": 80,
+  "charging": false
 }
